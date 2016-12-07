@@ -14,158 +14,119 @@
 
 
 module  ball ( input Reset, frame_clk, 
-					input [15:0] keycode, //pipe in signal for tank location (X,Y)
-               output [9:0] BallX, BallY, BallS );
+					input [15:0] keycode, firekey,
+					input [1:0] tankdir,
+					input [9:0] parentX, parentY, otherX, otherY, tank_size,//pipe in signal for tank location (X,Y) for both tanks, as well as direction for ball fire
+               output [9:0] BallX, BallY, BallS,
+					output hit, ball_fire);
     logic [15:0] keycoded;
     logic [9:0] Ball_X_Pos, Ball_X_Motion, Ball_Y_Pos, Ball_Y_Motion, Ball_Size;
 	 
-    parameter [9:0] Ball_X_Center=320;  // Center position on the X axis
-    parameter [9:0] Ball_Y_Center=240;  // Center position on the Y axis
+  //  parameter [9:0] Ball_X_Start = parentX;  // Center position on the X axis
+   // parameter [9:0] Ball_Y_Start = parentY;  // Center position on the Y axis
     parameter [9:0] Ball_X_Min=1;       // Leftmost point on the X axis
     parameter [9:0] Ball_X_Max=639;     // Rightmost point on the X axis
     parameter [9:0] Ball_Y_Min=1;       // Topmost point on the Y axis
     parameter [9:0] Ball_Y_Max=479;     // Bottommost point on the Y axis
-    parameter [9:0] Ball_X_Step=2;      // Step size on the X axis
-    parameter [9:0] Ball_Y_Step=2;      // Step size on the Y axis
+    parameter [9:0] Ball_X_Step=20;      // Step size on the X axis
+    parameter [9:0] Ball_Y_Step=20;      // Step size on the Y axis
 	 parameter [9:0] balls = 0;   
-
-    assign Ball_Size = 2;  // assigns the value 4 as a 10-digit binary number, ie "0000000100"
+      assign Ball_X_Start = parentX;
+		assign Ball_Y_Start = parentY;
+    //assign Ball_Size = 10;  // assigns the value 4 as a 10-digit binary number, ie "0000000100"
 
     always_ff @ (posedge Reset or posedge frame_clk )
-	 
     begin: Move_Ball
         if (Reset)  // Asynchronous Reset
         begin 
+				//Ball_Size <= 0;
             Ball_Y_Motion <= 10'd0; //Ball_Y_Step;
 				Ball_X_Motion <= 10'd0; //Ball_X_Step;
-				Ball_Y_Pos <= Ball_Y_Center;
-				Ball_X_Pos <= Ball_X_Center;
-        end
+				Ball_Y_Pos <= 0;
+				Ball_X_Pos <= 0;
+				hit <= 1'b0;
+				ball_fire <= 1'b0;
+				
+		  end
         else 
         begin 
 				 keycoded <= keycode;
- // Ball is somewhere in the middle, don't bounce, just keep moving
-				 //Ball_X_Motion <= Ball_X_Motion;  // You need to remove this and make both X and Y respond to keyboard input
-				 if ( (Ball_Y_Pos + Ball_Size) >= Ball_Y_Max )  // Ball is at the bottom edge, BOUNCE!
-					  Ball_Y_Motion <= (~ (Ball_Y_Step) + 1'b1);  // 2's complement.
-					  
-				 else if ( (Ball_Y_Pos - Ball_Size) <= Ball_Y_Min )  // Ball is at the top edge, BOUNCE!
-					  Ball_Y_Motion <= Ball_Y_Step;
-					  
-				 else 
-					  Ball_Y_Motion <= Ball_Y_Motion;  // Ball is somewhere in the middle, don't bounce, just keep moving
-					  
-				 if ( (Ball_X_Pos + Ball_Size) >= Ball_X_Max )  // Ball is at the right edge, BOUNCE!
-				 begin
-					  Ball_X_Motion <= (~ (Ball_X_Step) + 1'b1);  // 2's complement.
-
-				 end		
-				 else if ( (Ball_X_Pos - Ball_Size) <= Ball_X_Min )  // Ball is at the left edge, BOUNCE!
-				 begin
-					  Ball_X_Motion <= Ball_X_Step;
-
-				 end	  
-				 else 
-					  Ball_X_Motion <= Ball_X_Motion; 
-				
-				 
-				 if(keycoded == 16'h001A) //if we press W
-				    begin  
-						if ( (Ball_Y_Pos - Ball_Size) <= Ball_Y_Min )  // Ball is at the top edge, BOUNCE!
+				 hit <= 1'b0;
+	
+			 if(keycoded == 16'h0009) //if we press FIRE (TBD) F key
+				    begin
+					   if (ball_fire == 1'b0)   
 						begin
-							Ball_Y_Motion <= Ball_Y_Step;
-							Ball_X_Motion <= balls; 
-						end	
-						else
-							begin
-							Ball_Y_Motion <= (~ (Ball_Y_Step) + 1'b1);
-							Ball_X_Motion <= balls; 
-							end
-				    end
-				 else if(keycoded == 16'h0004) //if we press A
-					begin
-					  if ( (Ball_X_Pos - Ball_Size) <= Ball_X_Min ) 
-					  begin
-							Ball_X_Motion <= Ball_X_Step;
-							Ball_Y_Motion <= balls;
-					  end	
-					  else		
-				     begin
-					   Ball_X_Motion <= (~ (Ball_X_Step) + 1'b1);
-						Ball_Y_Motion <= balls; 
-				     end
-					end
-				 else if (keycoded == 16'h0016) //if we press S
-					begin
-					 if ( (Ball_Y_Pos + Ball_Size) >= Ball_Y_Max )  // Ball is at the bottom edge, BOUNCE!
-					 begin
-						Ball_Y_Motion <= (~ (Ball_Y_Step) + 1'b1); 
-						Ball_X_Motion <= balls; 
-					 end	
-					  else
-				     begin
-					   Ball_Y_Motion <= Ball_Y_Step;
-						Ball_X_Motion <= balls;
-					  end	
-					end
-				 else if (keycoded == 16'h0007) // if we press D
-					begin
-					if ( (Ball_X_Pos + Ball_Size) >= Ball_X_Max )  // Ball is at the right edge, BOUNCE!
-					begin
-					  Ball_X_Motion <= (~ (Ball_X_Step) + 1'b1); 
-					  Ball_Y_Motion <= balls; 
-					end
-					  else
-				     begin
-						Ball_X_Motion <= Ball_X_Step; 
-						Ball_Y_Motion <= balls; 
-				     end
-					end
-				
+							Ball_Y_Pos <= Ball_Y_Start;
+							Ball_X_Pos <= Ball_X_Start;
 
-				/*unique case (keycode)
-					16'h001A :
-					begin
-							Ball_Y_Motion <= (~ (Ball_Y_Step) + 1'b1);//W
-							Ball_X_Motion <= balls;
-					end
-					16'h0004 :  
-					begin
-							Ball_X_Motion <= (~ (Ball_X_Step) + 1'b1);//A
-							Ball_Y_Motion <= balls;
-					end
-					16'h0016 : 
-					begin
-							Ball_Y_Motion <= Ball_Y_Step;//S
-							Ball_X_Motion <= balls;
-					end
-					16'h0007 : 
-					 begin
-							Ball_X_Motion <= Ball_X_Step;//D
-							Ball_Y_Motion <= balls;
-					 end
-					endcase*/
+							ball_fire <= 1'b1;
+							unique case (tankdir)
+								2'b00 : //up
+								begin
+									Ball_Y_Motion <= (~ (Ball_Y_Step) + 1'b1); 
+									Ball_X_Motion <= balls; 
+								end
+								2'b01 : //left
+								begin
+									Ball_Y_Motion <= balls;
+									Ball_X_Motion <= (~ (Ball_X_Step) + 1'b1); 
+								end
+								2'b10 : //down
+								begin
+									Ball_Y_Motion <= Ball_Y_Step;
+									Ball_X_Motion <= balls;
+								end
+								2'b11 : //right
+								begin
+									Ball_Y_Motion <= balls;
+									Ball_X_Motion <= Ball_X_Step; 
+								end
+							endcase
+							
+				   	end	 
+			end
+			 Ball_Y_Pos <= (Ball_Y_Pos + Ball_Y_Motion);  // Update ball position
+			 Ball_X_Pos <= (Ball_X_Pos + Ball_X_Motion);	 
+			 BallX <= Ball_X_Pos;
+			 BallY <= Ball_Y_Pos;
+						
 
-				 
-				 Ball_Y_Pos <= (Ball_Y_Pos + Ball_Y_Motion);  // Update ball position
-				 Ball_X_Pos <= (Ball_X_Pos + Ball_X_Motion);
-				 
-				 BallX <= Ball_X_Pos;
-				 BallY <= Ball_Y_Pos;
-	  /**************************************************************************************
-	    ATTENTION! Please answer the following quesiton in your lab report! Points will be allocated for the answers!
-		 Hidden Question #2/2:
-          Note that Ball_Y_Motion in the above statement may have been changed at the same clock edge
-          that is causing the assignment of Ball_Y_pos.  Will the new value of Ball_Y_Motion be used,
-          or the old?  How will this impact behavior of the ball during a bounce, and how might that 
-          interact with a response to a keypress?  Can you fix it?  Give an answer in your Post-Lab.
-      **************************************************************************************/
-      
+					
 			
-		end  
+	/*				if ( ((Ball_Y_Pos + Ball_Size >= Ball_Y_Max ) ||
+						 (Ball_Y_Pos - Ball_Size <= Ball_Y_Min ) ||
+						 (Ball_X_Pos + Ball_Size >= Ball_X_Max ) || 
+						 (Ball_X_Pos - Ball_Size <= Ball_X_Min )) && Ball_Size !=0 )// Ball is about to pass an edge, reset // should these conditions be OR statements rather than and cause any 1 of them could be true and we would want to reset????
+					 begin
+										Ball_Size <= 0;
+										Ball_Y_Motion <= 10'd0; //Ball_Y_Step;
+										Ball_X_Motion <= 10'd0; //Ball_X_Step;
+										Ball_Y_Pos <= 0;
+										Ball_X_Pos <= 0;
+					 end		
+					 if ( (Ball_Y_Pos >= otherY - tank_size/2) && (Ball_Y_Pos <= otherY + tank_size/2) &&
+						 (Ball_X_Pos >= otherX - tank_size/2) && (Ball_X_Pos <= otherX + tank_size/2) && Ball_Size !=0) //collide with tank, reset, send damage signal to tank module (may need to add + or - ball_step)
+					 begin
+						hit <= 1'b1;
+						Ball_Y_Pos <= 0;
+						Ball_X_Pos <= 0;
+						Ball_Size <= 0;
+						Ball_Y_Motion <= 10'd0; 
+						Ball_X_Motion <= 10'd0; 
+					 end
+					 Ball_Size <= Ball_Size;
+				    end	 */
+		
+		    
+			
+
+			
+		
     end
-       
-   // assign BallX = Ball_X_Pos;
+
+	 end		
+  //  assign BallX = Ball_X_Pos;
    
    // assign BallY = Ball_Y_Pos;
    
